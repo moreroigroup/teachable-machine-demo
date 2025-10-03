@@ -4,19 +4,19 @@
   <meta charset="UTF-8">
   <title>Teachable Machine Webcam Demo</title>
   <style>
-    body { 
-      font-family: Arial, sans-serif; 
-      text-align: center; 
-      margin-top: 20px; 
+    body {
+      font-family: Arial, sans-serif;
+      text-align: center;
+      margin-top: 20px;
     }
-    video, canvas { 
-      border: 2px solid #333; 
-      border-radius: 10px; 
+    video, canvas {
+      border: 2px solid #333;
+      border-radius: 10px;
     }
-    #label-container { 
-      margin-top: 20px; 
-      font-size: 18px; 
-      font-weight: bold; 
+    #label-container {
+      margin-top: 20px;
+      font-size: 18px;
+      font-weight: bold;
     }
   </style>
 </head>
@@ -25,13 +25,12 @@
   <video id="webcam" autoplay playsinline width="300" height="225"></video>
   <div id="label-container">Loading model...</div>
 
-  <!-- TensorFlow.js + Teachable Machine libraries -->
   <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs"></script>
   <script src="https://cdn.jsdelivr.net/npm/@teachablemachine/image"></script>
 
   <script>
-    // Model files are in the same folder as index.html
-    const URL = "./";  
+    // Use your GitHub Pages URL as base
+    const URL = "https://moreroigroup.github.io/teachable-machine-demo/";
     let model, webcam, labelContainer, maxPredictions;
 
     async function init() {
@@ -39,30 +38,29 @@
         const modelURL = URL + "model.json";
         const metadataURL = URL + "metadata.json";
 
-        // Load the model and metadata
         model = await tmImage.load(modelURL, metadataURL);
         maxPredictions = model.getTotalClasses();
 
         // Setup webcam
-        const flip = true; 
-        webcam = new tmImage.Webcam(300, 225, flip); 
-        await webcam.setup(); 
+        const flip = true;
+        webcam = new tmImage.Webcam(300, 225, flip);
+        await webcam.setup();
         await webcam.play();
         window.requestAnimationFrame(loop);
 
         // Replace video element with webcam canvas
         document.getElementById("webcam").replaceWith(webcam.canvas);
 
-        // Prepare labels
+        // Prepare label container
         labelContainer = document.getElementById("label-container");
         labelContainer.innerHTML = "";
         for (let i = 0; i < maxPredictions; i++) {
           labelContainer.appendChild(document.createElement("div"));
         }
 
-        labelContainer.innerHTML = "Model loaded. Detecting...";
+        labelContainer.innerHTML = "✅ Model loaded. Detecting...";
       } catch (err) {
-        console.error("Failed to load model or webcam:", err);
+        console.error("Failed to load model:", err);
         document.getElementById("label-container").innerText = "❌ Error loading model.";
       }
     }
