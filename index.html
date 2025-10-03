@@ -25,60 +25,57 @@
   <video id="webcam" autoplay playsinline width="300" height="225"></video>
   <div id="label-container">Loading model...</div>
 
-<script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs"></script>
-<script src="https://cdn.jsdelivr.net/npm/@teachablemachine/image"></script>
+  <!-- Only need TensorFlow.js -->
+  <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs"></script>
 
-<script>
-  const URL = "https://moreroigroup.github.io/teachable-machine-demo/";
-  let model, webcam, labelContainer, maxPredictions;
+  <script>
+    const MODEL_URL = "https://moreroigroup.github.io/teachable-machine-demo/model.json";
+    let model, webcam, labelContainer;
 
-  async function init() {
-    try {
-      const modelURL = URL + "model.json";
-      const metadataURL = URL + "metadata.json";
+    async function init() {
+      try {
+        // Load your TensorFlow.js model
+        model = await tf.loadLayersModel(MODEL_URL);
+        console.log("✅ Model loaded:", model);
 
-      model = await tmImage.load(modelURL, metadataURL);
-      maxPredictions = model.getTotalClasses();
+        // Setup webcam
+        const video = document.getElementById("webcam");
+        const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+        video.srcObject = stream;
 
-      const flip = true;
-      webcam = new tmImage.Webcam(300, 225, flip);
-      await webcam.setup();
-      await webcam.play();
-      window.requestAnimationFrame(loop);
+        labelContainer = document.getElementById("label-container");
+        labelContainer.innerText = "✅ Model loaded. Detecting...";
 
-      document.getElementById("webcam").replaceWith(webcam.canvas);
-
-      labelContainer = document.getElementById("label-container");
-      labelContainer.innerHTML = "";
-      for (let i = 0; i < maxPredictions; i++) {
-        labelContainer.appendChild(document.createElement("div"));
+        video.addEventListener("loadeddata", predictLoop);
+      } catch (err) {
+        console.error("❌ Failed to load model:", err);
+        document.getElementById("label-container").innerText = "❌ Error loading model.";
       }
-
-      labelContainer.innerHTML = "✅ Model loaded. Detecting...";
-    } catch (err) {
-      console.error("Failed to load model:", err);
-      document.getElementById("label-container").innerText = "❌ Error loading model.";
     }
-  }
 
-  async function loop() {
-    webcam.update();
-    await predict();
-    window.requestAnimationFrame(loop);
-  }
+    async function predictLoop() {
+      const video = document.getElementById("webcam");
 
-  async function predict() {
-    const prediction = await model.predict(webcam.canvas);
-    for (let i = 0; i < maxPredictions; i++) {
-      const classPrediction =
-        prediction[i].className + ": " + (prediction[i].probability * 100).toFixed(2) + "%";
-      labelContainer.childNodes[i].innerHTML = classPrediction;
+      // Convert video frame into tensor
+      const img = tf.browser.fromPixels(video)
+        .resizeNearestNeighbor([224, 224]) // resize to what model expects
+        .toFloat()
+        .expandDims();
+
+      // Run prediction
+      const prediction = await model.predict(img).data();
+
+      // Show predictions
+      labelContainer.innerHTML = "";
+      prediction.forEach((p, i) => {
+        const percent = (p * 100).toFixed(2);
+        labelContainer.innerHTML += `Class ${i}: ${percent}% <br>`;
+      });
+
+      requestAnimationFrame(predictLoop);
     }
-  }
 
-  init();
-</script>
-
+    init();
+  </script>
 </body>
 </html>
-
