@@ -26,68 +26,73 @@
   <video id="webcam" autoplay playsinline width="300" height="225"></video>
   <div id="label-container">Loading model...</div>
 
-  <!-- TensorFlow.js -->
+  <!-- TensorFlow.js + Teachable Machine libraries -->
   <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@teachablemachine/image"></script>
 
   <script>
-    const MODEL_URL = "https://moreroigroup.github.io/teachable-machine-demo/model.json";
-    const CLASS_NAMES = ["Thumbs Up", "Thumbs Down"]; // two classes
-    let model, webcam, labelContainer;
+    const URL = "./"; // same folder as index.html
+    let model, webcam, labelContainer, maxPredictions, classLabels;
 
     async function init() {
       try {
-        // Load the model
-        model = await tf.loadLayersModel(MODEL_URL);
-        console.log("✅ Model loaded");
+        const modelURL = URL + "model.json";
+        const metadataURL = URL + "metadata.json";
+
+        // Load model + metadata
+        model = await tmImage.load(modelURL, metadataURL);
+        maxPredictions = model.getTotalClasses();
+
+        // Get class labels from metadata.json
+        const metadata = await fetch(metadataURL).then(r => r.json());
+        classLabels = metadata.labels;
 
         // Setup webcam
-        const video = document.getElementById("webcam");
-        const stream = await navigator.mediaDevices.getUserMedia({ video: true });
-        video.srcObject = stream;
+        const flip = true;
+        webcam = new tmImage.Webcam(300, 225, flip);
+        await webcam.setup();
+        await webcam.play();
+        window.requestAnimationFrame(loop);
+
+        // Replace video with webcam canvas
+        document.getElementById("webcam").replaceWith(webcam.canvas);
 
         labelContainer = document.getElementById("label-container");
-        labelContainer.innerText = "✅ Model loaded. Detecting...";
-
-        video.addEventListener("loadeddata", predictLoop);
+        labelContainer.innerHTML = "✅ Model loaded. Detecting...";
       } catch (err) {
-        console.error("❌ Failed to load model:", err);
+        console.error("Failed to load model:", err);
         document.getElementById("label-container").innerText = "❌ Error loading model.";
       }
     }
 
-    async function predictLoop() {
-      const video = document.getElementById("webcam");
+    async function loop() {
+      webcam.update();
+      await predict();
+      window.requestAnimationFrame(loop);
+    }
 
-      // Convert video frame into tensor
-      const img = tf.browser.fromPixels(video)
-        .resizeNearestNeighbor([224, 224]) // adjust if your model expects different size
-        .toFloat()
-        .expandDims();
-
-      // Run prediction
-      const prediction = await model.predict(img).data();
+    async function predict() {
+      const prediction = await model.predict(webcam.canvas);
 
       // Find top prediction
-      let maxIndex = 0;
+      let best = prediction[0];
       for (let i = 1; i < prediction.length; i++) {
-        if (prediction[i] > prediction[maxIndex]) {
-          maxIndex = i;
+        if (prediction[i].probability > best.probability) {
+          best = prediction[i];
         }
       }
 
-      // Show only the top prediction with color
-      const percent = (prediction[maxIndex] * 100).toFixed(2);
-      const labelText = `Prediction: ${CLASS_NAMES[maxIndex]} (${percent}%)`;
+      const percent = (best.probability * 100).toFixed(2);
+      const resultText = `${best.className}: ${percent}%`;
 
-      labelContainer.innerHTML = labelText;
+      labelContainer.innerHTML = resultText;
 
-      if (CLASS_NAMES[maxIndex] === "Thumbs Up") {
+      // Color code
+      if (best.className === "Thumbs Up") {
         labelContainer.style.color = "green";
       } else {
         labelContainer.style.color = "red";
       }
-
-      requestAnimationFrame(predictLoop);
     }
 
     init();
