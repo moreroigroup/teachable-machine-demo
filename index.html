@@ -4,9 +4,20 @@
   <meta charset="UTF-8">
   <title>Teachable Machine Webcam Demo</title>
   <style>
-    body { font-family: Arial, sans-serif; text-align: center; margin-top: 20px; }
-    video { border: 2px solid #333; border-radius: 10px; }
-    #label-container { margin-top: 20px; font-size: 18px; font-weight: bold; }
+    body { 
+      font-family: Arial, sans-serif; 
+      text-align: center; 
+      margin-top: 20px; 
+    }
+    video, canvas { 
+      border: 2px solid #333; 
+      border-radius: 10px; 
+    }
+    #label-container { 
+      margin-top: 20px; 
+      font-size: 18px; 
+      font-weight: bold; 
+    }
   </style>
 </head>
 <body>
@@ -19,32 +30,40 @@
   <script src="https://cdn.jsdelivr.net/npm/@teachablemachine/image"></script>
 
   <script>
-    const URL = "./"; // folder where model.json lives
+    // Model files are in the same folder as index.html
+    const URL = "./";  
     let model, webcam, labelContainer, maxPredictions;
 
     async function init() {
-      const modelURL = URL + "model.json";
-      const metadataURL = URL + "metadata.json";
+      try {
+        const modelURL = URL + "model.json";
+        const metadataURL = URL + "metadata.json";
 
-      // Load model + metadata
-      model = await tmImage.load(modelURL, metadataURL);
-      maxPredictions = model.getTotalClasses();
+        // Load the model and metadata
+        model = await tmImage.load(modelURL, metadataURL);
+        maxPredictions = model.getTotalClasses();
 
-      // Setup webcam
-      const flip = true; // flip webcam for mirror effect
-      webcam = new tmImage.Webcam(300, 225, flip);
-      await webcam.setup(); // request webcam
-      await webcam.play();
-      window.requestAnimationFrame(loop);
+        // Setup webcam
+        const flip = true; 
+        webcam = new tmImage.Webcam(300, 225, flip); 
+        await webcam.setup(); 
+        await webcam.play();
+        window.requestAnimationFrame(loop);
 
-      // Add webcam to page
-      document.getElementById("webcam").replaceWith(webcam.canvas);
+        // Replace video element with webcam canvas
+        document.getElementById("webcam").replaceWith(webcam.canvas);
 
-      // Prepare labels
-      labelContainer = document.getElementById("label-container");
-      labelContainer.innerHTML = "";
-      for (let i = 0; i < maxPredictions; i++) {
-        labelContainer.appendChild(document.createElement("div"));
+        // Prepare labels
+        labelContainer = document.getElementById("label-container");
+        labelContainer.innerHTML = "";
+        for (let i = 0; i < maxPredictions; i++) {
+          labelContainer.appendChild(document.createElement("div"));
+        }
+
+        labelContainer.innerHTML = "Model loaded. Detecting...";
+      } catch (err) {
+        console.error("Failed to load model or webcam:", err);
+        document.getElementById("label-container").innerText = "❌ Error loading model.";
       }
     }
 
