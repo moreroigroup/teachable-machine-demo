@@ -15,8 +15,9 @@
     }
     #label-container {
       margin-top: 20px;
-      font-size: 18px;
+      font-size: 24px;
       font-weight: bold;
+      transition: color 0.3s ease;
     }
   </style>
 </head>
@@ -25,18 +26,19 @@
   <video id="webcam" autoplay playsinline width="300" height="225"></video>
   <div id="label-container">Loading model...</div>
 
-  <!-- Only need TensorFlow.js -->
+  <!-- TensorFlow.js -->
   <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs"></script>
 
   <script>
     const MODEL_URL = "https://moreroigroup.github.io/teachable-machine-demo/model.json";
+    const CLASS_NAMES = ["Thumbs Up", "Thumbs Down"]; // two classes
     let model, webcam, labelContainer;
 
     async function init() {
       try {
-        // Load your TensorFlow.js model
+        // Load the model
         model = await tf.loadLayersModel(MODEL_URL);
-        console.log("✅ Model loaded:", model);
+        console.log("✅ Model loaded");
 
         // Setup webcam
         const video = document.getElementById("webcam");
@@ -58,19 +60,32 @@
 
       // Convert video frame into tensor
       const img = tf.browser.fromPixels(video)
-        .resizeNearestNeighbor([224, 224]) // resize to what model expects
+        .resizeNearestNeighbor([224, 224]) // adjust if your model expects different size
         .toFloat()
         .expandDims();
 
       // Run prediction
       const prediction = await model.predict(img).data();
 
-      // Show predictions
-      labelContainer.innerHTML = "";
-      prediction.forEach((p, i) => {
-        const percent = (p * 100).toFixed(2);
-        labelContainer.innerHTML += `Class ${i}: ${percent}% <br>`;
-      });
+      // Find top prediction
+      let maxIndex = 0;
+      for (let i = 1; i < prediction.length; i++) {
+        if (prediction[i] > prediction[maxIndex]) {
+          maxIndex = i;
+        }
+      }
+
+      // Show only the top prediction with color
+      const percent = (prediction[maxIndex] * 100).toFixed(2);
+      const labelText = `Prediction: ${CLASS_NAMES[maxIndex]} (${percent}%)`;
+
+      labelContainer.innerHTML = labelText;
+
+      if (CLASS_NAMES[maxIndex] === "Thumbs Up") {
+        labelContainer.style.color = "green";
+      } else {
+        labelContainer.style.color = "red";
+      }
 
       requestAnimationFrame(predictLoop);
     }
